@@ -1,0 +1,49 @@
+name: Maestro independent approval proof
+run-name: "AM42B:${{ inputs.request_id }}:${{ inputs.instance_id }}:${{ inputs.task_fingerprint }}:${{ inputs.approval_nonce }}:${{ inputs.expires_at }}"
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        required: true
+        type: string
+      instance_id:
+        required: true
+        type: string
+      task_fingerprint:
+        required: true
+        type: string
+      approval_nonce:
+        required: true
+        type: string
+      expires_at:
+        required: true
+        type: string
+permissions: {}
+jobs:
+  approval_proof:
+    name: Harmless approval proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    environment: maestro-approval
+    steps:
+      - name: Validate synthetic proof only
+        shell: bash
+        env:
+          REQUEST_ID: ${{ inputs.request_id }}
+          INSTANCE_ID: ${{ inputs.instance_id }}
+          FINGERPRINT: ${{ inputs.task_fingerprint }}
+          NONCE: ${{ inputs.approval_nonce }}
+          EXPIRES_AT: ${{ inputs.expires_at }}
+        run: |
+          python3 - <<'PY'
+          import datetime, json, os, re
+          fields = {key: os.environ[key] for key in ('REQUEST_ID', 'INSTANCE_ID', 'FINGERPRINT', 'NONCE', 'EXPIRES_AT')}
+          for key in ('REQUEST_ID', 'INSTANCE_ID'):
+              assert re.fullmatch(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', fields[key])
+          for key in ('FINGERPRINT', 'NONCE'):
+              assert re.fullmatch(r'[a-f0-9]{64}', fields[key])
+          expiry = datetime.datetime.fromisoformat(fields['EXPIRES_AT'].replace('Z', '+00:00'))
+          assert datetime.datetime.now(datetime.timezone.utc) < expiry < datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24)
+          print('Harmless approval proof only. No Maestro task or Codex execution.')
+          print(json.dumps(fields, sort_keys=True))
+          PY
