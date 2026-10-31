@@ -1,0 +1,25 @@
+name: Maestro approval UI test
+run-name: "Approval UI test — ${{ inputs.request_id }}"
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        description: 'Non-sensitive test request ID (example TEST-001)'
+        required: true
+        type: string
+jobs:
+  approval_ui_test:
+    name: Owner review test only
+    runs-on: ubuntu-latest
+    environment: maestro-approval
+    permissions:
+      contents: read
+    steps:
+      - name: Confirm test workflow after environment review
+        shell: bash
+        env:
+          REQUEST_ID: ${{ inputs.request_id }}
+        run: |
+          echo "GitHub environment review test completed."
+          echo "Request: $REQUEST_ID"
+          echo "This workflow does NOT authorize Maestro execution."
